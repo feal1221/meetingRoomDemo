@@ -18,6 +18,7 @@ public class UserService {
 
     @Transactional
     public UserVO createUser(UserVO userVo) {
+//        TODO:確認權限
         if (isEmailExists(userVo.getEmail())) {
             throw new IllegalArgumentException("User with email " + userVo.getEmail() + " already exists");
         }
