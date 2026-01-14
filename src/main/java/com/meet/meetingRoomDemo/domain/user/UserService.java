@@ -33,6 +33,7 @@ public class UserService {
     @Transactional
     public List<UserVO> getAllUsers() {
 //        TODO: add pagination
+//        TODO:add keyword search
         return userRepository.findAll();
     }
 
@@ -42,6 +43,9 @@ public class UserService {
     }
 
     public Boolean isEmailExists(String email) {
+        if (email == null || email.isEmpty()) {
+            throw new IllegalArgumentException("Email must not be null or empty");
+        }
         return userRepository.findUserByEmail(email.toLowerCase()) != null;
     }
 }
