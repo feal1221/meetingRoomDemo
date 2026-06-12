@@ -1,28 +1,75 @@
 package com.meet.meetingRoomDemo.domain.user;
 
-
+import com.meet.meetingRoomDemo.auth.dto.RegisterRequest;
+import com.meet.meetingRoomDemo.service.EmailService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
-
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+    private final StringRedisTemplate redisTemplate;
 
     @Transactional
     public UserVO createUser(UserVO userVo) {
-//        TODO:確認權限
         if (isEmailExists(userVo.getEmail())) {
             throw new IllegalArgumentException("User with email " + userVo.getEmail() + " already exists");
         }
+        if (userVo.getPwd() != null) {
+            userVo.setPwd(passwordEncoder.encode(userVo.getPwd()));
+        }
         return userRepository.save(userVo);
+    }
+
+    public UserVO register(RegisterRequest request) {
+        if (isEmailExists(request.getEmail())) {
+            throw new IllegalArgumentException("Email already registered: " + request.getEmail());
+        }
+        UserVO user = UserVO.builder()
+            .userName(request.getUserName())
+            .email(request.getEmail().toLowerCase())
+            .pwd(passwordEncoder.encode(request.getPassword()))
+            .company(request.getCompany())
+            .role(0)
+            .status(1)
+            .authProvider(AuthProvider.LOCAL)
+            .emailVerified(false)
+            .build();
+        UserVO saved = userRepository.save(user);
+
+        String token = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set("verify:email:" + token, saved.getEmail(), Duration.ofHours(24));
+        emailService.sendVerificationEmail(saved.getEmail(), token);
+
+        return saved;
+    }
+
+    public boolean verifyEmailByToken(String token) {
+        String email = redisTemplate.opsForValue().get("verify:email:" + token);
+        if (email == null) {
+            return false;
+        }
+        UserVO user = userRepository.findUserByEmail(email);
+        if (user == null) {
+            return false;
+        }
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        redisTemplate.delete("verify:email:" + token);
+        return true;
     }
 
     @Transactional
@@ -30,16 +77,16 @@ public class UserService {
         return userRepository.save(userVo);
     }
 
-    @Transactional
     public List<UserVO> getAllUsers() {
-//        TODO: add pagination
-//        TODO:add keyword search
         return userRepository.findAll();
     }
 
-    @Transactional
-    public UserVO getUserById(String userId) {
+    public UserVO getUserById(UUID userId) {
         return userRepository.findById(userId).orElse(null);
+    }
+
+    public UserVO findByEmail(String email) {
+        return userRepository.findUserByEmail(email.toLowerCase());
     }
 
     public Boolean isEmailExists(String email) {

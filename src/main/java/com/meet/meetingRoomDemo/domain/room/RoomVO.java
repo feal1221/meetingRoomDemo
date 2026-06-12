@@ -10,6 +10,7 @@ import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -21,6 +22,8 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "t_room")
 @Entity
 public class RoomVO implements Serializable {
 
@@ -33,17 +36,24 @@ public class RoomVO implements Serializable {
     @Column(name = "room_id")
     private UUID roomId;
 
-    @Column(name = "room_name")
+    @Column(name = "room_name", nullable = false)
     private String roomName;
+
+    @Column(nullable = false)
+    private Integer capacity;
+
+    @Column(nullable = true)
+    private String location;
+
     private Integer status;
 
     @CreatedBy
-    @Column(name = "created_by")
+    @Column(name = "created_by", updatable = false)
     private String createdBy;
 
     @CreatedDate
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "created_time",insertable=false,updatable=false)
+    @Column(name = "created_time", updatable = false)
     private OffsetDateTime createdTime;
 
     @LastModifiedBy
@@ -52,6 +62,6 @@ public class RoomVO implements Serializable {
 
     @LastModifiedDate
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "updated_time",insertable=false,updatable=false)
-    private OffsetDateTime  updatedTime;
+    @Column(name = "updated_time")
+    private OffsetDateTime updatedTime;
 }
