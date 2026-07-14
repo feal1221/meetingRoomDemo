@@ -2,6 +2,8 @@ package com.meet.meetingRoomDemo.domain.record;
 
 import com.meet.meetingRoomDemo.auth.UserPrincipal;
 import com.meet.meetingRoomDemo.domain.record.dto.BatchBookingResponse;
+import com.meet.meetingRoomDemo.domain.record.dto.MyRecordResponse;
+import com.meet.meetingRoomDemo.domain.record.dto.RecurringBookingRequest;
 import com.meet.meetingRoomDemo.handler.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,37 +35,34 @@ public class RecordController {
 
     // ─── 批次預約 ─────────────────────────────────────────────────────────────
 
-    @Operation(summary = "批次預約（一次送多個時段）",
-               description = "送出 List<RecordDTO>，所有時段全部通過衝突檢查才會寫入；任一衝突則全部失敗。")
+    @Operation(summary = "批次預約（指定日期清單 + 每日時段）",
+               description = "傳入日期清單與每日開始/結束時間，所有時段全部通過衝突檢查才會寫入；任一衝突則全部失敗。")
     @PostMapping("/batch")
-    public Result<BatchBookingResponse> createBatch(@RequestBody List<RecordDTO> dtos,
+    public Result<BatchBookingResponse> createBatch(@Valid @RequestBody RecurringBookingRequest req,
                                                     Authentication authentication) {
         UserPrincipal p = (UserPrincipal) authentication.getPrincipal();
-        return Result.success(recordService.createBatch(dtos, p.getUserId()));
+        return Result.success(recordService.createBatch(req, p.getUserId()));
     }
 
     // ─── 週期預約 ─────────────────────────────────────────────────────────────
 
-    @Operation(summary = "週期預約（RRULE 展開，上限 52 筆）",
+    @Operation(summary = "週期預約（指定日期清單 + 每日時段）",
                description = """
-                   rrule 範例：
-                   - 每週一共10次：FREQ=WEEKLY;BYDAY=MO;COUNT=10
-                   - 每日共5天：FREQ=DAILY;COUNT=5
-                   - 每月共6次：FREQ=MONTHLY;COUNT=6
-                   - 每週一三五直到年底：FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20241231T000000Z
+                   傳入日期清單與每日開始/結束時間，系統逐一檢查衝突後批次建立預約。
+                   日期格式：yyyy-MM-dd，時間格式：HH:mm（Asia/Taipei）
                    """)
     @PostMapping("/recurring")
-    public Result<BatchBookingResponse> createRecurring(@Valid @RequestBody RecordDTO dto,
+    public Result<BatchBookingResponse> createRecurring(@Valid @RequestBody RecurringBookingRequest req,
                                                         Authentication authentication) {
         UserPrincipal p = (UserPrincipal) authentication.getPrincipal();
-        return Result.success(recordService.createRecurring(dto, p.getUserId()));
+        return Result.success(recordService.createRecurring(req, p.getUserId()));
     }
 
     // ─── 查詢 ─────────────────────────────────────────────────────────────────
 
     @Operation(summary = "查詢我的預約（依建立時間降冪）")
     @GetMapping("/my")
-    public Result<List<RecordVO>> getMyRecords(Authentication authentication) {
+    public Result<List<MyRecordResponse>> getMyRecords(Authentication authentication) {
         UserPrincipal p = (UserPrincipal) authentication.getPrincipal();
         return Result.success(recordService.getMyRecords(p.getUserId()));
     }

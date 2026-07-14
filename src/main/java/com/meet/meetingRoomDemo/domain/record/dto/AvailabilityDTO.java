@@ -36,6 +36,7 @@ public class AvailabilityDTO {
     public static class BookedSlot {
         private UUID recordId;
         private String title;
+        private String createdBy;
         private OffsetDateTime startedTime;
         private OffsetDateTime endedTime;
     }

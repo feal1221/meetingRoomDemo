@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meet.meetingRoomDemo.domain.record.RecordDTO;
 import com.meet.meetingRoomDemo.domain.record.RecordService;
 import com.meet.meetingRoomDemo.domain.record.RecordVO;
+import com.meet.meetingRoomDemo.domain.record.dto.MyRecordResponse;
 import com.meet.meetingRoomDemo.domain.room.RoomService;
 import com.meet.meetingRoomDemo.domain.room.RoomVO;
 import lombok.RequiredArgsConstructor;
@@ -89,7 +90,7 @@ public class ToolHandler {
 
     private String handleListMyBookings(JsonNode input, UUID userId) throws Exception {
         boolean upcomingOnly = !input.has("upcoming_only") || input.get("upcoming_only").asBoolean(true);
-        List<RecordVO> records = recordService.getMyRecords(userId);
+        List<MyRecordResponse> records = recordService.getMyRecords(userId);
 
         if (upcomingOnly) {
             OffsetDateTime now = OffsetDateTime.now();
@@ -100,12 +101,13 @@ public class ToolHandler {
 
         List<Map<String, Object>> result = records.stream().map(r -> {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("recordId",   r.getRecordId());
-            m.put("title",      r.getTitle());
-            m.put("roomId",     r.getRoomId());
+            m.put("recordId",    r.getRecordId());
+            m.put("title",       r.getTitle());
+            m.put("roomId",      r.getRoomId());
+            m.put("roomName",    r.getRoomName());
             m.put("startedTime", r.getStartedTime());
             m.put("endedTime",   r.getEndedTime());
-            m.put("status",     r.getStatus() == 1 ? "confirmed" : "cancelled");
+            m.put("status",      r.getStatus() == 1 ? "confirmed" : "cancelled");
             return m;
         }).collect(Collectors.toList());
 

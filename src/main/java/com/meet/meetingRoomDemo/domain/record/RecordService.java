@@ -2,6 +2,8 @@ package com.meet.meetingRoomDemo.domain.record;
 
 import com.meet.meetingRoomDemo.domain.record.dto.AvailabilityDTO;
 import com.meet.meetingRoomDemo.domain.record.dto.BatchBookingResponse;
+import com.meet.meetingRoomDemo.domain.record.dto.MyRecordResponse;
+import com.meet.meetingRoomDemo.domain.record.dto.RecurringBookingRequest;
 import com.meet.meetingRoomDemo.domain.room.RoomRepository;
 import com.meet.meetingRoomDemo.domain.room.RoomVO;
 import com.meet.meetingRoomDemo.handler.ConflictException;
@@ -13,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,30 +47,47 @@ public class RecordService {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Transactional
-    public BatchBookingResponse createBatch(List<RecordDTO> dtos, UUID userId) {
-        if (dtos == null || dtos.isEmpty()) {
-            throw new IllegalArgumentException("Batch must contain at least one booking");
+    public BatchBookingResponse createBatch(RecurringBookingRequest req, UUID userId) {
+        RoomVO room = requireActiveRoom(req.getRoomId());
+
+        ZoneOffset taipei = ZoneOffset.ofHours(8);
+        LocalTime startLT = LocalTime.parse(req.getStartTime(), DateTimeFormatter.ofPattern("HH:mm"));
+        LocalTime endLT   = LocalTime.parse(req.getEndTime(),   DateTimeFormatter.ofPattern("HH:mm"));
+
+        if (!startLT.isBefore(endLT)) {
+            throw new IllegalArgumentException("startTime must be before endTime");
         }
 
         List<RecordVO> toSave = new ArrayList<>();
-        for (int i = 0; i < dtos.size(); i++) {
-            RecordDTO dto = dtos.get(i);
-            requireFields(dto, i);
-            validateTime(dto.getStartedTime(), dto.getEndedTime());
 
-            RoomVO room = requireActiveRoom(dto.getRoomId());
-            checkConflict(dto.getRoomId(), dto.getStartedTime(), dto.getEndedTime(), room.getRoomName());
+        for (String dateStr : req.getDates()) {
+            LocalDate date = LocalDate.parse(dateStr);
+            OffsetDateTime start = date.atTime(startLT).atOffset(taipei);
+            OffsetDateTime end   = date.atTime(endLT).atOffset(taipei);
 
-            // 批次內部衝突檢查（同房間、時間重疊）
+            if (start.toInstant().isBefore(Instant.now())) {
+                throw new IllegalArgumentException("Cannot create a booking in the past: " + dateStr);
+            }
+            checkConflict(req.getRoomId(), start, end, room.getRoomName());
+
+            // 批次內部衝突檢查
             boolean internalConflict = toSave.stream()
-                .filter(r -> r.getRoomId().equals(dto.getRoomId()))
-                .anyMatch(r -> r.getEndedTime().toInstant().isAfter(dto.getStartedTime().toInstant())
-                            && r.getStartedTime().toInstant().isBefore(dto.getEndedTime().toInstant()));
+                .anyMatch(r -> r.getEndedTime().toInstant().isAfter(start.toInstant())
+                            && r.getStartedTime().toInstant().isBefore(end.toInstant()));
             if (internalConflict) {
-                throw new ConflictException("Conflicting slots within the batch at index " + i);
+                throw new ConflictException("Conflicting slots within the batch: " + dateStr);
             }
 
-            toSave.add(buildRecord(dto, userId, null));
+            toSave.add(RecordVO.builder()
+                .roomId(req.getRoomId())
+                .userId(userId)
+                .title(req.getTitle())
+                .reason(req.getReason())
+                .startedTime(start)
+                .endedTime(end)
+                .status(1)
+                .isNotified(0)
+                .build());
         }
 
         List<RecordVO> saved = recordRepository.saveAll(toSave);
@@ -81,43 +102,37 @@ public class RecordService {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Transactional
-    public BatchBookingResponse createRecurring(RecordDTO dto, UUID userId) {
-        if (dto.getRrule() == null || dto.getRrule().isBlank()) {
-            throw new IllegalArgumentException("rrule is required for recurring booking");
-        }
-        validateTime(dto.getStartedTime(), dto.getEndedTime());
-        RoomVO room = requireActiveRoom(dto.getRoomId());
+    public BatchBookingResponse createRecurring(RecurringBookingRequest req, UUID userId) {
+        RoomVO room = requireActiveRoom(req.getRoomId());
 
-        List<OffsetDateTime> occurrences = RRuleExpander.expand(dto.getRrule(), dto.getStartedTime());
-        if (occurrences.isEmpty()) {
-            throw new IllegalArgumentException("RRULE produced no occurrences");
-        }
+        ZoneOffset taipei = ZoneOffset.ofHours(8);
+        LocalTime startLT = LocalTime.parse(req.getStartTime(), DateTimeFormatter.ofPattern("HH:mm"));
+        LocalTime endLT   = LocalTime.parse(req.getEndTime(),   DateTimeFormatter.ofPattern("HH:mm"));
 
-        long slotSeconds = ChronoUnit.SECONDS.between(dto.getStartedTime(), dto.getEndedTime());
-        // 提醒時間的偏移量（相對於各次開始時間）
-        Long reminderOffsetSeconds = dto.getReminderTime() != null
-            ? ChronoUnit.SECONDS.between(dto.getReminderTime(), dto.getStartedTime())
-            : null;
+        if (!startLT.isBefore(endLT)) {
+            throw new IllegalArgumentException("startTime must be before endTime");
+        }
 
         UUID parentId = UUID.randomUUID();
         List<RecordVO> toSave = new ArrayList<>();
 
-        for (OffsetDateTime occStart : occurrences) {
-            OffsetDateTime occEnd = occStart.plusSeconds(slotSeconds);
-            checkConflict(dto.getRoomId(), occStart, occEnd, room.getRoomName());
+        for (String dateStr : req.getDates()) {
+            LocalDate date = LocalDate.parse(dateStr);
+            OffsetDateTime start = date.atTime(startLT).atOffset(taipei);
+            OffsetDateTime end   = date.atTime(endLT).atOffset(taipei);
 
-            OffsetDateTime occReminder = reminderOffsetSeconds != null
-                ? occStart.minusSeconds(reminderOffsetSeconds) : null;
+            if (start.toInstant().isBefore(Instant.now())) {
+                throw new IllegalArgumentException("Cannot create a booking in the past: " + dateStr);
+            }
+            checkConflict(req.getRoomId(), start, end, room.getRoomName());
 
             toSave.add(RecordVO.builder()
-                .roomId(dto.getRoomId())
+                .roomId(req.getRoomId())
                 .userId(userId)
-                .title(dto.getTitle())
-                .reason(dto.getReason())
-                .startedTime(occStart)
-                .endedTime(occEnd)
-                .reminderTime(occReminder)
-                .rrule(dto.getRrule())
+                .title(req.getTitle())
+                .reason(req.getReason())
+                .startedTime(start)
+                .endedTime(end)
                 .parentRecordId(parentId)
                 .status(1)
                 .isNotified(0)
@@ -136,8 +151,35 @@ public class RecordService {
     // 查詢
     // ─────────────────────────────────────────────────────────────────────────
 
-    public List<RecordVO> getMyRecords(UUID userId) {
-        return recordRepository.findByUserIdOrderByStartedTimeDesc(userId);
+    public List<MyRecordResponse> getMyRecords(UUID userId) {
+        List<RecordVO> records = recordRepository.findByUserIdOrderByStartedTimeDesc(userId);
+
+        Set<UUID> roomIds = records.stream().map(RecordVO::getRoomId).collect(Collectors.toSet());
+        Map<UUID, String> roomNameMap = roomRepository.findAllById(roomIds).stream()
+            .collect(Collectors.toMap(RoomVO::getRoomId, RoomVO::getRoomName));
+
+        return records.stream()
+            .map(r -> MyRecordResponse.builder()
+                .recordId(r.getRecordId())
+                .roomId(r.getRoomId())
+                .roomName(roomNameMap.get(r.getRoomId()))
+                .userId(r.getUserId())
+                .title(r.getTitle())
+                .reason(r.getReason())
+                .commentText(r.getCommentText())
+                .status(r.getStatus())
+                .parentRecordId(r.getParentRecordId())
+                .rrule(r.getRrule())
+                .startedTime(r.getStartedTime())
+                .endedTime(r.getEndedTime())
+                .reminderTime(r.getReminderTime())
+                .isNotified(r.getIsNotified())
+                .createdBy(r.getCreatedBy())
+                .createdTime(r.getCreatedTime())
+                .updatedBy(r.getUpdatedBy())
+                .updatedTime(r.getUpdatedTime())
+                .build())
+            .collect(Collectors.toList());
     }
 
     public RecordVO getRecordById(UUID recordId) {
@@ -173,6 +215,7 @@ public class RecordService {
                         .map(r -> AvailabilityDTO.BookedSlot.builder()
                             .recordId(r.getRecordId())
                             .title(r.getTitle())
+                            .createdBy(r.getCreatedBy())
                             .startedTime(r.getStartedTime())
                             .endedTime(r.getEndedTime())
                             .build())

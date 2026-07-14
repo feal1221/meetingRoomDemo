@@ -2,7 +2,6 @@ package com.meet.meetingRoomDemo.domain.user;
 
 import com.meet.meetingRoomDemo.auth.dto.RegisterRequest;
 import com.meet.meetingRoomDemo.service.EmailService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class UserService {
 
@@ -23,10 +21,19 @@ public class UserService {
     private final EmailService emailService;
     private final StringRedisTemplate redisTemplate;
 
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       EmailService emailService, StringRedisTemplate redisTemplate) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
+        this.redisTemplate = redisTemplate;
+    }
+
     @Transactional
     public UserVO createUser(UserVO userVo) {
-        if (isEmailExists(userVo.getEmail())) {
-            throw new IllegalArgumentException("User with email " + userVo.getEmail() + " already exists");
+        String email = userVo.getEmail().toLowerCase();
+        if (isEmailExists(email)) {
+            throw new IllegalArgumentException("User with email " + email + " already exists");
         }
         if (userVo.getPwd() != null) {
             userVo.setPwd(passwordEncoder.encode(userVo.getPwd()));
@@ -34,6 +41,7 @@ public class UserService {
         return userRepository.save(userVo);
     }
 
+    @Transactional
     public UserVO register(RegisterRequest request) {
         if (isEmailExists(request.getEmail())) {
             throw new IllegalArgumentException("Email already registered: " + request.getEmail());
@@ -62,7 +70,7 @@ public class UserService {
         if (email == null) {
             return false;
         }
-        UserVO user = userRepository.findUserByEmail(email);
+        UserVO user = userRepository.findUserByEmail(email.toLowerCase());
         if (user == null) {
             return false;
         }
@@ -89,7 +97,7 @@ public class UserService {
         return userRepository.findUserByEmail(email.toLowerCase());
     }
 
-    public Boolean isEmailExists(String email) {
+    public boolean isEmailExists(String email) {
         if (email == null || email.isEmpty()) {
             throw new IllegalArgumentException("Email must not be null or empty");
         }
