@@ -18,7 +18,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_ENDPOINT: https://generativelanguage.googleapis.com/v1beta/openai
-          OPENAI_API_MODEL: gemini-2.5-flash
+          MODEL: gemini-2.5-flash
           LANGUAGE: Chinese
           PROMPT: >
             你是一位資深 Java / Spring Boot 架構師與資安審查者。請針對這次 Pull Request 的變更進行程式碼審查，重點檢查：
@@ -32,5 +32,5 @@ jobs:
           temperature: 0.2
           max_tokens: 8000
           MAX_PATCH_LENGTH: 20000
-          IGNORE_PATTERNS: /target/**/*,**/*.md,**/*.txt
-          INCLUDE_PATTERNS: **/*.java,**/*.yml,**/*.yaml,**/*.xml,**/*.properties
+          IGNORE_PATTERNS: '/target/**/*,**/*.md,**/*.txt'
+          INCLUDE_PATTERNS: '**/*.java,**/*.yml,**/*.yaml,**/*.xml,**/*.properties'
