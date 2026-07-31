@@ -19,7 +19,7 @@ jobs:
         uses: sshnaidm/gemini-code-review-action@v2
         with:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
-          model: gemini-2.5-flash
+          model: gemini-3.5-flash
           language: Chinese
           prompt: >
             你是一位資深 Java / Spring Boot 架構師與資安審查者。請針對這次 Pull Request 的變更進行程式碼審查，重點檢查：
