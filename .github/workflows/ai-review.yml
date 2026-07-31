@@ -18,15 +18,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_ENDPOINT: https://generativelanguage.googleapis.com/v1beta/openai
-          MODEL: gemini-2.5-flash
+          OPENAI_API_MODEL: gemini-2.5-flash
           LANGUAGE: Chinese
-          PROMPT: >-
+          PROMPT: >
             你是一位資深 Java / Spring Boot 架構師與資安審查者。請針對這次 Pull Request 的變更進行程式碼審查，重點檢查：
-            1. Java 程式邏輯、例外處理、null 安全、集合使用是否有潛在 Bug
-            2. Spring Boot / Spring MVC / JPA / Security 的使用是否正確，包含 Controller、Service、Repository、Transaction、Entity mapping、Lazy loading、Bean 注入與權限驗證
-            3. 效能問題，例如不必要的 N+1 query、重複查詢、過大的物件建立、阻塞式操作、過多的日誌或序列化成本
-            4. 安全風險，例如 SQL Injection、XSS、CSRF、JWT / OAuth2 使用錯誤、敏感資訊外洩、錯誤的權限判斷
-            5. 命名、分層責任、可維護性、可測試性與重構建議
+            1. Java 程式邏輯、例外處理、null 安全、集合使用是否有潛在 Bug；
+            2. Spring Boot / Spring MVC / JPA / Security 的使用是否正確，包含 Controller、Service、Repository、Transaction、Entity mapping、Lazy loading、Bean 注入與權限驗證；
+            3. 效能問題，例如不必要的 N+1 query、重複查詢、過大的物件建立、阻塞式操作、過多的日誌或序列化成本；
+            4. 安全風險，例如 SQL Injection、XSS、CSRF、JWT / OAuth2 使用錯誤、敏感資訊外洩、錯誤的權限判斷；
+            5. 命名、分層責任、可維護性、可測試性與重構建議。
             請用繁體中文輸出，優先列出高風險問題，並提供具體可執行的修正建議；如果某段變更沒有明顯問題，也請簡短說明原因。
           top_p: 1
           temperature: 0.2
