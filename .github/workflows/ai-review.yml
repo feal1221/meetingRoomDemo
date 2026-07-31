@@ -12,15 +12,16 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: AI PR review
-        uses: anc95/ChatGPT-CodeReview@v1.0.24
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENAI_API_ENDPOINT: https://generativelanguage.googleapis.com/v1beta/openai
-          MODEL: gemini-2.5-flash
-          LANGUAGE: Chinese
-          PROMPT: >
+        uses: sshnaidm/gemini-code-review-action@v2
+        with:
+          gemini-key: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini-2.5-flash
+          language: Chinese
+          prompt: >
             你是一位資深 Java / Spring Boot 架構師與資安審查者。請針對這次 Pull Request 的變更進行程式碼審查，重點檢查：
             1. Java 程式邏輯、例外處理、null 安全、集合使用是否有潛在 Bug；
             2. Spring Boot / Spring MVC / JPA / Security 的使用是否正確，包含 Controller、Service、Repository、Transaction、Entity mapping、Lazy loading、Bean 注入與權限驗證；
@@ -31,6 +32,6 @@ jobs:
           top_p: 1
           temperature: 0.2
           max_tokens: 8000
-          MAX_PATCH_LENGTH: 20000
-          IGNORE_PATTERNS: '/target/**/*,**/*.md,**/*.txt'
-          INCLUDE_PATTERNS: '**/*.java,**/*.yml,**/*.yaml,**/*.xml,**/*.properties'
+          max_patch_length: 20000
+          ignore_patterns: '/target/**/*,**/*.md,**/*.txt'
+          include_patterns: '**/*.java,**/*.yml,**/*.yaml,**/*.xml,**/*.properties'
