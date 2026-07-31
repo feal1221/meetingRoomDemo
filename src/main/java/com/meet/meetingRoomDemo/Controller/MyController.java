@@ -1,6 +1,7 @@
 package com.meet.meetingRoomDemo.Controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,5 +33,11 @@ public class MyController {
     public String processData(String input) {
         String data = input;  // No null check
         return "Processed: " + data.toUpperCase();  // Potential NPE
+    }
+
+    @GetMapping("/echo")
+    public String echo(@RequestParam String message, @RequestParam String token) {
+        System.out.println("debug token=" + token);
+        return "<html><body>" + message + "</body></html>";
     }
 }
