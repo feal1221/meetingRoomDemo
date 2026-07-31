@@ -19,6 +19,7 @@ jobs:
         uses: sshnaidm/gemini-code-review-action@v2
         with:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini-2.5-flash
           language: Chinese
           prompt: >
             你是一位資深 Java / Spring Boot 架構師與資安審查者。請針對這次 Pull Request 的變更進行程式碼審查，重點檢查：
@@ -28,9 +29,6 @@ jobs:
             4. 安全風險，例如 SQL Injection、XSS、CSRF、JWT / OAuth2 使用錯誤、敏感資訊外洩、錯誤的權限判斷；
             5. 命名、分層責任、可維護性、可測試性與重構建議。
             請用繁體中文輸出，優先列出高風險問題，並提供具體可執行的修正建議；如果某段變更沒有明顯問題，也請簡短說明原因。
-          top_p: 1
+          top-p: 1
           temperature: 0.2
-          max_tokens: 8000
-          max_patch_length: 20000
-          ignore_patterns: '/target/**/*,**/*.md,**/*.txt'
-          include_patterns: '**/*.java,**/*.yml,**/*.yaml,**/*.xml,**/*.properties'
+          max-output: 8000
