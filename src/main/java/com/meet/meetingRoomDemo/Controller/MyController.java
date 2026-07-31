@@ -18,11 +18,19 @@ public class MyController {
     @GetMapping("/data")
     public String getData() {
         try {
-            int x = 10 / 0;  // Potential bug: division by zero
-            return "Data: " + x;
+            int x = 10;
+            int y = 0;
+            int result = x / y;  // Potential division by zero
+            return "Data: " + result;
         } catch (Exception e) {
             e.printStackTrace();
-            return null;  // Poor error handling
+            return null;  // Poor error handling: returning null
         }
+    }
+
+    @GetMapping("/process")
+    public String processData(String input) {
+        String data = input;  // No null check
+        return "Processed: " + data.toUpperCase();  // Potential NPE
     }
 }
